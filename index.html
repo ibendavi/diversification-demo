@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diversification Explorer — MBA 6223</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+/* ── Reset & Base ── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f4f5f7;color:#333;min-height:100vh}
+
+/* ── Header ── */
+.header{background:#0d47a1;color:#fff;padding:14px 24px;text-align:center}
+.header h1{font-size:1.35rem;font-weight:700;margin-bottom:1px}
+.header p{font-size:.82rem;opacity:.92}
+
+/* ── Container ── */
+.container{max-width:960px;margin:0 auto;padding:14px 16px 30px}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab-btn{flex:1;padding:11px 0;font-size:.95rem;font-weight:600;border:2px solid #0d47a1;border-radius:8px;cursor:pointer;transition:.15s;background:#fff;color:#0d47a1}
+.tab-btn.active{background:#0d47a1;color:#fff}
+.tab-btn:hover:not(.active){background:#e8eef6}
+
+/* ── Cards ── */
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.07);padding:16px;margin-bottom:14px}
+.card h3{font-size:.92rem;font-weight:700;color:#0d47a1;margin-bottom:10px}
+
+/* ── Controls layout ── */
+.controls-grid{display:grid;gap:10px}
+.sim-controls .controls-grid{grid-template-columns:1fr 1fr}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row label{font-size:.82rem;color:#555;min-width:110px}
+.slider-row input[type=range]{flex:1;accent-color:#0d47a1;height:6px;cursor:pointer}
+.slider-row .slider-val{font-size:.85rem;font-weight:700;color:#0d47a1;min-width:55px;text-align:right}
+
+/* ── Buttons ── */
+.btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn{padding:9px 20px;font-size:.88rem;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:.15s}
+.btn-primary{background:#0d47a1;color:#fff}.btn-primary:hover{background:#093580}
+.btn-secondary{background:#e8eef6;color:#0d47a1}.btn-secondary:hover{background:#d0ddef}
+.btn-sm{padding:6px 14px;font-size:.8rem}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── Ticker input (real mode) ── */
+.search-row{display:flex;gap:8px;margin-bottom:8px}
+.search-row input{flex:1;padding:10px 14px;font-size:1rem;border:2px solid #ddd;border-radius:8px;outline:none;text-transform:uppercase}
+.search-row input:focus{border-color:#0d47a1}
+.search-row button{padding:10px 22px;font-size:.95rem;font-weight:600;background:#0d47a1;color:#fff;border:none;border-radius:8px;cursor:pointer}
+.search-row button:hover{background:#093580}
+
+/* ── Presets ── */
+.presets{font-size:.82rem;color:#888;margin-bottom:8px}
+.presets a{color:#0d47a1;text-decoration:underline;cursor:pointer;margin:0 3px}
+.presets a:hover{color:#990000}
+
+/* ── Ticker chips ── */
+.chip-area{display:flex;flex-wrap:wrap;gap:5px;min-height:28px;margin-bottom:8px}
+.chip{display:inline-flex;align-items:center;gap:4px;background:#e8eef6;color:#0d47a1;padding:3px 10px;border-radius:14px;font-size:.78rem;font-weight:600}
+.chip .x{cursor:pointer;font-size:.85rem;opacity:.6;margin-left:2px}.chip .x:hover{opacity:1;color:#b00}
+
+/* ── Stats row ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.07);padding:12px 8px;text-align:center}
+.stat .lbl{font-size:.68rem;color:#999;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.stat .val{font-size:1.4rem;font-weight:700;color:#0d47a1}
+.stat .sub{font-size:.67rem;color:#aaa;margin-top:1px}
+
+/* ── Insight box ── */
+.insight-box{background:#fdf6f0;border:1px solid #e8d5c4;border-left:4px solid #0d47a1;border-radius:8px;padding:14px 18px;margin-bottom:14px;font-size:.88rem;line-height:1.6}
+.insight-box b{color:#0d47a1}
+
+/* ── Loading / error ── */
+#loading{text-align:center;padding:36px;font-size:1rem;color:#777;display:none}
+.spin{display:inline-block;width:20px;height:20px;border:3px solid #ddd;border-top-color:#0d47a1;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+#error-box{background:#fff3f3;border:1px solid #f5c6c6;color:#b00;padding:12px 16px;border-radius:8px;margin-bottom:14px;display:none;font-size:.92rem}
+
+/* ── Chart ── */
+.chart-wrap{min-height:380px;margin-bottom:14px}
+
+/* ── Responsive ── */
+@media(max-width:700px){
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .sim-controls .controls-grid{grid-template-columns:1fr}
+  .container{padding:10px}
+}
+
+/* ── Hidden panel ── */
+.panel{display:none}.panel.active{display:block}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Diversification Explorer</h1>
+  <p>MBA 6223 Finance &mdash; Risk &amp; Return</p>
+</div>
+
+<div class="container">
+
+<!-- ── Tabs ── -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('sim')">Simulation</button>
+  <button class="tab-btn" onclick="switchTab('real')">Real Data</button>
+</div>
+
+<div id="error-box"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SIMULATION PANEL                            -->
+<!-- ════════════════════════════════════════════ -->
+<div id="panel-sim" class="panel active">
+
+<div class="card sim-controls">
+  <h3>Simulation Parameters</h3>
+  <div class="controls-grid">
+    <div class="slider-row">
+      <label>Assets (N)</label>
+      <input type="range" id="sim-n" min="5" max="100" value="40" step="1" oninput="updSimLabel(this)">
+      <span class="slider-val" id="lbl-sim-n">40</span>
+    </div>
+    <div class="slider-row">
+      <label>Market Vol (%)</label>
+      <input type="range" id="sim-mkt-vol" min="5" max="40" value="16" step="1" oninput="updSimLabel(this)">
+      <span class="slider-val" id="lbl-sim-mkt-vol">16%</span>
+    </div>
+    <div class="slider-row">
+      <label>Idio. Vol (%)</label>
+      <input type="range" id="sim-idio-vol" min="5" max="60" value="30" step="1" oninput="updSimLabel(this)">
+      <span class="slider-val" id="lbl-sim-idio-vol">30%</span>
+    </div>
+    <div class="slider-row">
+      <label>Beta Range</label>
+      <input type="range" id="sim-beta-spread" min="0" max="15" value="6" step="1" oninput="updSimLabel(this)">
+      <span class="slider-val" id="lbl-sim-beta-spread">0.7 – 1.3</span>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="sim-run-btn" onclick="runSim()">Run Simulation</button>
+    <button class="btn btn-secondary" id="sim-reshuffle-btn" onclick="reshuffleSim()" disabled>Reshuffle Order</button>
+    <div class="slider-row" style="margin-left:auto;min-width:180px">
+      <label>Speed</label>
+      <input type="range" id="sim-speed" min="1" max="5" value="3" step="1">
+      <span class="slider-val" id="lbl-sim-speed">3</span>
+    </div>
+  </div>
+</div>
+
+<div class="chart-wrap"><div id="chart-sim" style="width:100%;height:380px"></div></div>
+<div class="stats-row" id="stats-sim">
+  <div class="stat"><div class="lbl">Avg Stock Vol</div><div class="val">—</div></div>
+  <div class="stat"><div class="lbl">Portfolio Vol</div><div class="val">—</div></div>
+  <div class="stat"><div class="lbl">Systematic Floor</div><div class="val">—</div></div>
+  <div class="stat"><div class="lbl">Vol Reduction</div><div class="val">—</div></div>
+</div>
+<div class="insight-box" id="insight-sim">
+  Press <b>Run Simulation</b> to generate synthetic assets and watch diversification in action.
+</div>
+
+</div><!-- /panel-sim -->
+
+
+<!-- ════════════════════════════════════════════ -->
+<!-- REAL DATA PANEL                             -->
+<!-- ════════════════════════════════════════════ -->
+<div id="panel-real" class="panel">
+
+<div class="card">
+  <h3>Select Stocks</h3>
+  <div class="search-row">
+    <input type="text" id="ticker-input" placeholder="Enter ticker (e.g., AAPL)" autocomplete="off" spellcheck="false"
+           onkeydown="if(event.key==='Enter')addTicker()">
+    <button onclick="addTicker()">Add</button>
+  </div>
+  <div class="presets">
+    Presets:
+    <a onclick="loadPreset('random20')">Random 20 S&amp;P 500</a> &middot;
+    <a onclick="loadPreset('tech')">Tech Stocks</a> &middot;
+    <a onclick="loadPreset('diverse')">Diverse Sectors</a> &middot;
+    <a onclick="loadPreset('defensive')">Defensive</a>
+  </div>
+  <div class="chip-area" id="chip-area"></div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="real-run-btn" onclick="runReal()" disabled>Build Curve</button>
+    <button class="btn btn-secondary" id="real-reshuffle-btn" onclick="reshuffleReal()" disabled>Reshuffle Order</button>
+    <button class="btn btn-secondary btn-sm" onclick="clearTickers()">Clear All</button>
+    <div class="slider-row" style="margin-left:auto;min-width:180px">
+      <label>Speed</label>
+      <input type="range" id="real-speed" min="1" max="5" value="3" step="1">
+    </div>
+  </div>
+</div>
+
+<div id="loading"><span class="spin"></span> Fetching data&hellip;</div>
+<div class="chart-wrap"><div id="chart-real" style="width:100%;height:380px"></div></div>
+<div class="stats-row" id="stats-real">
+  <div class="stat"><div class="lbl">Avg Stock Vol</div><div class="val">—</div></div>
+  <div class="stat"><div class="lbl">Portfolio Vol</div><div class="val">—</div></div>
+  <div class="stat"><div class="lbl">S&amp;P 500 Vol</div><div class="val">—</div></div>
+  <div class="stat"><div class="lbl">Diversification Ratio</div><div class="val">—</div></div>
+</div>
+<div class="insight-box" id="insight-real">
+  Add at least 3 stocks (or pick a preset), then press <b>Build Curve</b>.
+</div>
+
+</div><!-- /panel-real -->
+
+</div><!-- /container -->
+
+
+<script>
+/* ═══════════════════════════════════════════════
+   GLOBALS
+   ═══════════════════════════════════════════════ */
+const plotCfg = { responsive: true, displayModeBar: false };
+let simAnimId = null;   // animation timer
+let realAnimId = null;
+
+/* ── Tab switching ── */
+function switchTab(which) {
+    document.querySelectorAll('.tab-btn').forEach((b,i) => {
+        b.classList.toggle('active', (i===0 && which==='sim') || (i===1 && which==='real'));
+    });
+    document.getElementById('panel-sim').classList.toggle('active', which==='sim');
+    document.getElementById('panel-real').classList.toggle('active', which==='real');
+}
+
+/* ── Error display ── */
+function showError(msg) {
+    const box = document.getElementById('error-box');
+    box.textContent = msg; box.style.display = 'block';
+    setTimeout(() => box.style.display = 'none', 6000);
+}
+
+/* ═══════════════════════════════════════════════
+   MATH HELPERS
+   ═══════════════════════════════════════════════ */
+function annVol(monthlyReturns) {
+    const n = monthlyReturns.length;
+    if (n < 2) return 0;
+    const mean = monthlyReturns.reduce((a,b)=>a+b,0)/n;
+    const v = monthlyReturns.reduce((a,r)=>a+(r-mean)**2,0)/(n-1);
+    return Math.sqrt(v * 12);               // returns in % if input in %
+}
+
+function regress(x, y) {
+    const n = x.length;
+    let sx=0,sy=0,sxy=0,sx2=0;
+    for(let i=0;i<n;i++){sx+=x[i];sy+=y[i];sxy+=x[i]*y[i];sx2+=x[i]*x[i]}
+    const beta=(n*sxy-sx*sy)/(n*sx2-sx*sx);
+    const alpha=(sy-beta*sx)/n;
+    return {alpha, beta};
+}
+
+/* Compute equal-weight portfolio monthly returns for first k assets */
+function eqWeightReturns(assetReturns, k) {
+    const T = assetReturns[0].length;
+    const portRet = new Array(T).fill(0);
+    for (let t = 0; t < T; t++) {
+        let sum = 0;
+        for (let i = 0; i < k; i++) sum += assetReturns[i][t];
+        portRet[t] = sum / k;
+    }
+    return portRet;
+}
+
+/* Shuffle array in place (Fisher-Yates) */
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+/* Normal random via Box-Muller */
+function randn() {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+
+/* ═══════════════════════════════════════════════
+   SIMULATION MODE
+   ═══════════════════════════════════════════════ */
+let simAssets = null;   // { returns: [[T floats], ...], betas: [], avgStockVol, sysFloor }
+let simOrder = null;    // permutation of asset indices
+let simCurve = null;    // { x: [1..N], y: [vol1..volN] }
+
+function updSimLabel(el) {
+    const id = el.id;
+    if (id === 'sim-n')            document.getElementById('lbl-sim-n').textContent = el.value;
+    else if (id === 'sim-mkt-vol') document.getElementById('lbl-sim-mkt-vol').textContent = el.value + '%';
+    else if (id === 'sim-idio-vol')document.getElementById('lbl-sim-idio-vol').textContent = el.value + '%';
+    else if (id === 'sim-beta-spread') {
+        const spread = parseInt(el.value) / 10;
+        document.getElementById('lbl-sim-beta-spread').textContent =
+            `${(1-spread).toFixed(1)} – ${(1+spread).toFixed(1)}`;
+    }
+}
+
+function generateSimAssets() {
+    const N   = parseInt(document.getElementById('sim-n').value);
+    const sigM = parseFloat(document.getElementById('sim-mkt-vol').value);  // annual %
+    const sigE = parseFloat(document.getElementById('sim-idio-vol').value); // annual %
+    const spread = parseInt(document.getElementById('sim-beta-spread').value) / 10;
+    const T = 120; // months
+
+    const sigM_m = sigM / Math.sqrt(12);   // monthly market vol
+    const sigE_m = sigE / Math.sqrt(12);   // monthly idio vol
+
+    // Generate market returns
+    const mktRet = [];
+    for (let t = 0; t < T; t++) mktRet.push(randn() * sigM_m);
+
+    // Generate N assets
+    const betas = [];
+    const returns = [];
+    for (let i = 0; i < N; i++) {
+        const beta = 1 - spread + Math.random() * 2 * spread;
+        betas.push(beta);
+        const assetRet = [];
+        for (let t = 0; t < T; t++) {
+            assetRet.push(beta * mktRet[t] + randn() * sigE_m);
+        }
+        returns.push(assetRet);
+    }
+
+    // Compute individual stock vols (annualized)
+    const stockVols = returns.map(r => annVol(r));
+    const avgStockVol = stockVols.reduce((a,b)=>a+b,0) / N;
+
+    // Systematic floor: avg(beta) * sigma_market
+    const avgBeta = betas.reduce((a,b)=>a+b,0) / N;
+    const sysFloor = Math.abs(avgBeta) * sigM;
+
+    return { returns, betas, stockVols, avgStockVol, sysFloor, N };
+}
+
+function computeSimCurve(assets, order) {
+    const N = assets.N;
+    const xs = [], ys = [];
+    // Reorder returns by the permutation
+    const ordered = order.map(i => assets.returns[i]);
+    for (let k = 1; k <= N; k++) {
+        const portRet = eqWeightReturns(ordered, k);
+        xs.push(k);
+        ys.push(annVol(portRet));
+    }
+    return { x: xs, y: ys };
+}
+
+function runSim() {
+    if (simAnimId) { clearInterval(simAnimId); simAnimId = null; }
+
+    simAssets = generateSimAssets();
+    simOrder = shuffle([...Array(simAssets.N).keys()]);
+    simCurve = computeSimCurve(simAssets, simOrder);
+
+    document.getElementById('sim-reshuffle-btn').disabled = false;
+    animateSim();
+}
+
+function reshuffleSim() {
+    if (!simAssets) return;
+    if (simAnimId) { clearInterval(simAnimId); simAnimId = null; }
+
+    simOrder = shuffle([...Array(simAssets.N).keys()]);
+    simCurve = computeSimCurve(simAssets, simOrder);
+    animateSim();
+}
+
+function animateSim() {
+    if (simAnimId) { clearInterval(simAnimId); simAnimId = null; }
+
+    const { x, y } = simCurve;
+    const floor = simAssets.sysFloor;
+    const N = x.length;
+
+    // Initial empty traces: [0]=curve, [1]=floor line, [2]=shaded region
+    const initLayout = {
+        title: { text: 'Portfolio Volatility vs Number of Assets', font: { size: 15, color: '#333' } },
+        xaxis: { title: 'Number of Assets in Portfolio', range: [0, N + 2], dtick: N <= 20 ? 2 : (N <= 50 ? 5 : 10), gridcolor: '#eee' },
+        yaxis: { title: 'Annualized Volatility (%)', range: [0, Math.max(y[0], simAssets.avgStockVol) * 1.15], gridcolor: '#eee', zeroline: false },
+        showlegend: true,
+        legend: { x: 0.65, y: 0.95, bgcolor: 'rgba(255,255,255,.9)', bordercolor: '#ddd', borderwidth: 1 },
+        margin: { l: 56, r: 24, t: 48, b: 52 },
+        plot_bgcolor: '#fafafa', paper_bgcolor: 'white',
+        annotations: [],
+        shapes: [],
+    };
+
+    // Curve trace
+    const curveTrace = {
+        x: [x[0]], y: [y[0]], mode: 'lines+markers', type: 'scatter',
+        name: 'Portfolio Vol',
+        line: { color: '#0d47a1', width: 3 },
+        marker: { color: '#0d47a1', size: 5 },
+    };
+
+    // Floor line
+    const floorTrace = {
+        x: [0, N + 1], y: [floor, floor], mode: 'lines', type: 'scatter',
+        name: 'Systematic Risk',
+        line: { color: '#cc0000', width: 2, dash: 'dash' },
+    };
+
+    // Shaded region (idiosyncratic)
+    const shadedTrace = {
+        x: [x[0], x[0]], y: [floor, y[0]],
+        fill: 'toself', fillcolor: 'rgba(13,71,161,0.08)',
+        line: { color: 'transparent' }, type: 'scatter', mode: 'lines',
+        name: 'Idiosyncratic Risk', showlegend: true,
+        hoverinfo: 'skip',
+    };
+
+    Plotly.newPlot('chart-sim', [curveTrace, floorTrace, shadedTrace], initLayout, plotCfg);
+
+    // Animate
+    let idx = 1;
+    const speeds = [200, 100, 50, 20, 5];
+    const spd = speeds[parseInt(document.getElementById('sim-speed').value) - 1];
+
+    updateSimStats(1);
+    updateSimInsight(1, N);
+
+    simAnimId = setInterval(() => {
+        if (idx >= N) {
+            clearInterval(simAnimId); simAnimId = null;
+            // Final shaded polygon
+            const polyX = [...x, ...x.slice().reverse()];
+            const polyY = [...y, ...new Array(N).fill(floor)];
+            Plotly.restyle('chart-sim', { x: [polyX], y: [polyY] }, [2]);
+            updateSimStats(N);
+            updateSimInsight(N, N);
+            return;
+        }
+        // Extend curve
+        Plotly.extendTraces('chart-sim', { x: [[x[idx]]], y: [[y[idx]]] }, [0]);
+        // Update shaded region polygon up to current point
+        const curX = x.slice(0, idx + 1);
+        const curY = y.slice(0, idx + 1);
+        const polyX = [...curX, ...curX.slice().reverse()];
+        const polyY = [...curY, ...new Array(idx + 1).fill(floor)];
+        Plotly.restyle('chart-sim', { x: [polyX], y: [polyY] }, [2]);
+
+        updateSimStats(idx + 1);
+        updateSimInsight(idx + 1, N);
+        idx++;
+    }, spd);
+}
+
+function updateSimStats(k) {
+    if (!simCurve || !simAssets) return;
+    const avgVol = simAssets.avgStockVol;
+    const portVol = simCurve.y[k - 1];
+    const floor = simAssets.sysFloor;
+    const reduction = ((avgVol - portVol) / avgVol * 100);
+
+    document.getElementById('stats-sim').innerHTML = `
+        <div class="stat"><div class="lbl">Avg Stock Vol</div><div class="val">${avgVol.toFixed(1)}%</div><div class="sub">single asset</div></div>
+        <div class="stat"><div class="lbl">Portfolio Vol</div><div class="val">${portVol.toFixed(1)}%</div><div class="sub">${k} assets</div></div>
+        <div class="stat"><div class="lbl">Systematic Floor</div><div class="val">${floor.toFixed(1)}%</div><div class="sub">&beta;&#x305; &times; &sigma;<sub>m</sub></div></div>
+        <div class="stat"><div class="lbl">Vol Reduction</div><div class="val">${reduction.toFixed(0)}%</div><div class="sub">diversified away</div></div>
+    `;
+}
+
+function updateSimInsight(k, N) {
+    const el = document.getElementById('insight-sim');
+    if (k <= 2) {
+        el.innerHTML = `<b>1&ndash;2 assets:</b> Nearly all risk is idiosyncratic (firm-specific). One bad earnings report can devastate your portfolio.`;
+    } else if (k <= 5) {
+        el.innerHTML = `<b>${k} assets:</b> Volatility is dropping quickly. Each new stock provides a large diversification benefit because firm-specific shocks partially cancel out.`;
+    } else if (k <= 15) {
+        el.innerHTML = `<b>${k} assets:</b> The curve is flattening. You've diversified away most idiosyncratic risk, but each additional stock still helps noticeably.`;
+    } else if (k <= 30) {
+        el.innerHTML = `<b>${k} assets:</b> Approaching the sweet spot (15&ndash;25 stocks). The marginal benefit of adding more stocks is shrinking &mdash; you're converging toward the <b>systematic risk floor</b>.`;
+    } else {
+        el.innerHTML = `<b>${k} assets:</b> Well-diversified. The remaining volatility is <b>systematic (market) risk</b> &mdash; it cannot be eliminated by adding more assets. This is the risk the market compensates you for bearing.`;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════
+   REAL DATA MODE
+   ═══════════════════════════════════════════════ */
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+
+let localData = null;       // pre-cached sp500_data.json
+let realTickers = [];       // current list of ticker strings
+let realData = {};          // { TICKER: { dates, returns } }
+let realCurve = null;       // { x, y }
+let realOrder = null;
+let spyVol = null;          // annualized SPY vol
+
+// ── Load local data ──
+(async function() {
+    try {
+        const r = await fetch('sp500_data.json');
+        if (r.ok) { localData = await r.json(); console.log('Local data loaded:', Object.keys(localData.tickers).length, 'tickers'); }
+    } catch(e) { console.log('No sp500_data.json — live fetch only.'); }
+})();
+
+async function fetchTicker(ticker) {
+    // Try local first
+    if (localData) {
+        if (ticker === 'SPY' && localData.spy) return localData.spy;
+        if (localData.tickers && localData.tickers[ticker]) return localData.tickers[ticker];
+    }
+    // Live fetch via Yahoo
+    const url = CORS_PROXY + encodeURIComponent(
+        `${YAHOO}${encodeURIComponent(ticker)}?range=5y&interval=1mo`);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${ticker}`);
+    const json = await resp.json();
+    if (!json.chart || json.chart.error)
+        throw new Error(json.chart?.error?.description || `No data for ${ticker}`);
+    const res = json.chart.result[0];
+    const ts = res.timestamp || [];
+    const adj = res.indicators.adjclose?.[0]?.adjclose || res.indicators.quote?.[0]?.close || [];
+    const dates = [], returns = [];
+    for (let i = 1; i < adj.length; i++) {
+        if (adj[i] != null && adj[i-1] != null && adj[i-1] > 0) {
+            const d = new Date(ts[i] * 1000);
+            dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+            returns.push(Math.round((adj[i]/adj[i-1] - 1) * 1e6) / 1e4);
+        }
+    }
+    if (returns.length < 12) throw new Error(`Only ${returns.length} months for ${ticker}`);
+    return { dates, returns };
+}
+
+function addTicker() {
+    const input = document.getElementById('ticker-input');
+    const ticker = input.value.trim().toUpperCase();
+    input.value = '';
+    if (!ticker) return;
+    if (realTickers.includes(ticker)) { showError(`${ticker} already added.`); return; }
+
+    // Fetch data
+    document.getElementById('loading').style.display = 'block';
+    fetchTicker(ticker).then(data => {
+        realData[ticker] = data;
+        realTickers.push(ticker);
+        renderChips();
+        document.getElementById('real-run-btn').disabled = realTickers.length < 3;
+        document.getElementById('loading').style.display = 'none';
+    }).catch(e => {
+        showError(`Could not load ${ticker}: ${e.message}`);
+        document.getElementById('loading').style.display = 'none';
+    });
+}
+
+function removeTicker(ticker) {
+    realTickers = realTickers.filter(t => t !== ticker);
+    delete realData[ticker];
+    renderChips();
+    document.getElementById('real-run-btn').disabled = realTickers.length < 3;
+}
+
+function clearTickers() {
+    realTickers = []; realData = {}; realCurve = null; realOrder = null;
+    renderChips();
+    document.getElementById('real-run-btn').disabled = true;
+    document.getElementById('real-reshuffle-btn').disabled = true;
+    Plotly.purge('chart-real');
+    document.getElementById('stats-real').innerHTML = `
+        <div class="stat"><div class="lbl">Avg Stock Vol</div><div class="val">&mdash;</div></div>
+        <div class="stat"><div class="lbl">Portfolio Vol</div><div class="val">&mdash;</div></div>
+        <div class="stat"><div class="lbl">S&amp;P 500 Vol</div><div class="val">&mdash;</div></div>
+        <div class="stat"><div class="lbl">Diversification Ratio</div><div class="val">&mdash;</div></div>`;
+    document.getElementById('insight-real').innerHTML = 'Add at least 3 stocks (or pick a preset), then press <b>Build Curve</b>.';
+}
+
+function renderChips() {
+    const area = document.getElementById('chip-area');
+    area.innerHTML = realTickers.map(t =>
+        `<span class="chip">${t}<span class="x" onclick="removeTicker('${t}')">&times;</span></span>`
+    ).join('');
+}
+
+/* ── Presets ── */
+const PRESETS = {
+    random20: () => {
+        if (!localData) return ['AAPL','MSFT','GOOGL','AMZN','JPM','JNJ','XOM','PG','HD','DIS',
+            'NVDA','PFE','BAC','KO','CAT','NEE','AMT','GS','TSLA','NFLX'];
+        const all = Object.keys(localData.tickers);
+        return shuffle([...all]).slice(0, 20);
+    },
+    tech: () => ['AAPL','MSFT','GOOGL','NVDA','META','AVGO','CRM','ADBE','INTC','CSCO','NFLX','AMZN'],
+    diverse: () => ['AAPL','JPM','JNJ','XOM','PG','CAT','NEE','AMT','LIN','NFLX','HD','DUK','GS','MRK','COP'],
+    defensive: () => ['JNJ','PG','KO','PEP','WMT','DUK','SO','D','CL','NEE','ABT','MCD'],
+};
+
+async function loadPreset(name) {
+    clearTickers();
+    const tickers = PRESETS[name]();
+    document.getElementById('loading').style.display = 'block';
+
+    // Ensure SPY is loaded
+    try {
+        if (!realData['SPY']) {
+            const spyData = await fetchTicker('SPY');
+            realData['SPY_REF'] = spyData; // stored separately, not in ticker list
+        }
+    } catch(e) {}
+
+    let loaded = 0;
+    for (const t of tickers) {
+        try {
+            const data = await fetchTicker(t);
+            realData[t] = data;
+            realTickers.push(t);
+            renderChips();
+            loaded++;
+        } catch(e) {
+            console.warn(`Skip ${t}: ${e.message}`);
+        }
+    }
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('real-run-btn').disabled = realTickers.length < 3;
+    if (loaded < 3) showError('Could not load enough tickers. Try another preset or add manually.');
+}
+
+/* ── Align returns to common dates ── */
+function alignMultiple(tickers) {
+    // Find dates common to ALL tickers
+    const dateSets = tickers.map(t => new Set(realData[t].dates));
+    let common = [...dateSets[0]];
+    for (let i = 1; i < dateSets.length; i++) {
+        common = common.filter(d => dateSets[i].has(d));
+    }
+    common.sort();
+    if (common.length < 12) throw new Error('Fewer than 12 overlapping months across all tickers.');
+
+    // Build return arrays aligned to common dates
+    const aligned = {};
+    for (const t of tickers) {
+        const dateMap = new Map(realData[t].dates.map((d,i) => [d, realData[t].returns[i]]));
+        aligned[t] = common.map(d => dateMap.get(d));
+    }
+    return { dates: common, aligned };
+}
+
+function computeRealCurve(tickers, order) {
+    const { dates, aligned } = alignMultiple(tickers);
+    const N = order.length;
+    const xs = [], ys = [];
+    const orderedReturns = order.map(i => aligned[tickers[i]]);
+
+    for (let k = 1; k <= N; k++) {
+        const portRet = eqWeightReturns(orderedReturns, k);
+        xs.push(k);
+        ys.push(annVol(portRet));
+    }
+
+    // Compute average stock vol
+    const stockVols = tickers.map(t => annVol(aligned[t]));
+    const avgStockVol = stockVols.reduce((a,b)=>a+b,0) / N;
+
+    // SPY vol (try to align with same dates)
+    let spyVolCalc = null;
+    const spyData = realData['SPY_REF'] || (localData ? localData.spy : null);
+    if (spyData) {
+        const spyMap = new Map(spyData.dates.map((d,i) => [d, spyData.returns[i]]));
+        const spyAligned = dates.map(d => spyMap.get(d)).filter(v => v !== undefined);
+        if (spyAligned.length > 12) spyVolCalc = annVol(spyAligned);
+    }
+
+    // Compute betas vs SPY for systematic floor
+    let sysFloor = null;
+    if (spyData) {
+        const spyMap = new Map(spyData.dates.map((d,i) => [d, spyData.returns[i]]));
+        const spyAligned = dates.filter(d => spyMap.has(d)).map(d => spyMap.get(d));
+        const commonDates2 = dates.filter(d => spyMap.has(d));
+        if (commonDates2.length > 12 && spyVolCalc) {
+            let betaSum = 0;
+            for (const t of tickers) {
+                const tMap = new Map(realData[t].dates.map((d,i) => [d, realData[t].returns[i]]));
+                const sx = [], sy = [];
+                for (const d of commonDates2) {
+                    const sv = spyMap.get(d), tv = tMap.get(d);
+                    if (sv !== undefined && tv !== undefined) { sx.push(sv); sy.push(tv); }
+                }
+                if (sx.length > 12) {
+                    const reg = regress(sx, sy);
+                    betaSum += reg.beta;
+                }
+            }
+            sysFloor = Math.abs(betaSum / N) * spyVolCalc;
+        }
+    }
+
+    return { x: xs, y: ys, avgStockVol, spyVol: spyVolCalc, sysFloor };
+}
+
+function runReal() {
+    if (realAnimId) { clearInterval(realAnimId); realAnimId = null; }
+    if (realTickers.length < 3) { showError('Need at least 3 tickers.'); return; }
+
+    try {
+        realOrder = shuffle([...Array(realTickers.length).keys()]);
+        realCurve = computeRealCurve(realTickers, realOrder);
+        document.getElementById('real-reshuffle-btn').disabled = false;
+        animateReal();
+    } catch(e) {
+        showError(e.message);
+    }
+}
+
+function reshuffleReal() {
+    if (!realTickers.length) return;
+    if (realAnimId) { clearInterval(realAnimId); realAnimId = null; }
+
+    realOrder = shuffle([...Array(realTickers.length).keys()]);
+    realCurve = computeRealCurve(realTickers, realOrder);
+    animateReal();
+}
+
+function animateReal() {
+    if (realAnimId) { clearInterval(realAnimId); realAnimId = null; }
+
+    const { x, y, spyVol: sv, sysFloor } = realCurve;
+    const N = x.length;
+
+    const traces = [];
+
+    // [0] Curve
+    traces.push({
+        x: [x[0]], y: [y[0]], mode: 'lines+markers', type: 'scatter',
+        name: 'Portfolio Vol',
+        line: { color: '#0d47a1', width: 3 },
+        marker: { color: '#0d47a1', size: 5 },
+    });
+
+    // [1] SPY vol dashed line
+    if (sv) {
+        traces.push({
+            x: [0, N + 1], y: [sv, sv], mode: 'lines', type: 'scatter',
+            name: 'S&P 500 Vol',
+            line: { color: '#4472C4', width: 2, dash: 'dot' },
+        });
+    }
+
+    // [2] Systematic floor
+    if (sysFloor) {
+        traces.push({
+            x: [0, N + 1], y: [sysFloor, sysFloor], mode: 'lines', type: 'scatter',
+            name: 'Systematic Floor',
+            line: { color: '#cc0000', width: 2, dash: 'dash' },
+        });
+    }
+
+    // [3] Shaded region
+    const shadeFloor = sysFloor || 0;
+    traces.push({
+        x: [x[0], x[0]], y: [shadeFloor, y[0]],
+        fill: 'toself', fillcolor: 'rgba(13,71,161,0.08)',
+        line: { color: 'transparent' }, type: 'scatter', mode: 'lines',
+        name: 'Idiosyncratic Risk', showlegend: true, hoverinfo: 'skip',
+    });
+
+    const layout = {
+        title: { text: 'Diversification Curve — Real Stock Data', font: { size: 15, color: '#333' } },
+        xaxis: { title: 'Number of Stocks in Portfolio', range: [0, N + 2], dtick: N <= 20 ? 2 : 5, gridcolor: '#eee' },
+        yaxis: { title: 'Annualized Volatility (%)', range: [0, Math.max(y[0], realCurve.avgStockVol) * 1.15], gridcolor: '#eee', zeroline: false },
+        showlegend: true,
+        legend: { x: 0.6, y: 0.95, bgcolor: 'rgba(255,255,255,.9)', bordercolor: '#ddd', borderwidth: 1 },
+        margin: { l: 56, r: 24, t: 48, b: 52 },
+        plot_bgcolor: '#fafafa', paper_bgcolor: 'white',
+    };
+
+    Plotly.newPlot('chart-real', traces, layout, plotCfg);
+
+    const shadeIdx = traces.length - 1; // index of shaded trace
+
+    let idx = 1;
+    const speeds = [200, 100, 50, 20, 5];
+    const spd = speeds[parseInt(document.getElementById('real-speed').value) - 1];
+
+    updateRealStats(1);
+    updateRealInsight(1, N);
+
+    realAnimId = setInterval(() => {
+        if (idx >= N) {
+            clearInterval(realAnimId); realAnimId = null;
+            const polyX = [...x, ...x.slice().reverse()];
+            const polyY = [...y, ...new Array(N).fill(shadeFloor)];
+            Plotly.restyle('chart-real', { x: [polyX], y: [polyY] }, [shadeIdx]);
+            updateRealStats(N);
+            updateRealInsight(N, N);
+            return;
+        }
+        Plotly.extendTraces('chart-real', { x: [[x[idx]]], y: [[y[idx]]] }, [0]);
+
+        const curX = x.slice(0, idx + 1);
+        const curY = y.slice(0, idx + 1);
+        const polyX = [...curX, ...curX.slice().reverse()];
+        const polyY = [...curY, ...new Array(idx + 1).fill(shadeFloor)];
+        Plotly.restyle('chart-real', { x: [polyX], y: [polyY] }, [shadeIdx]);
+
+        updateRealStats(idx + 1);
+        updateRealInsight(idx + 1, N);
+        idx++;
+    }, spd);
+}
+
+function updateRealStats(k) {
+    if (!realCurve) return;
+    const avgVol = realCurve.avgStockVol;
+    const portVol = realCurve.y[k - 1];
+    const sv = realCurve.spyVol;
+    const divRatio = portVol > 0 ? (avgVol / portVol).toFixed(2) : '—';
+
+    document.getElementById('stats-real').innerHTML = `
+        <div class="stat"><div class="lbl">Avg Stock Vol</div><div class="val">${avgVol.toFixed(1)}%</div><div class="sub">single asset</div></div>
+        <div class="stat"><div class="lbl">Portfolio Vol</div><div class="val">${portVol.toFixed(1)}%</div><div class="sub">${k} stocks</div></div>
+        <div class="stat"><div class="lbl">S&amp;P 500 Vol</div><div class="val">${sv ? sv.toFixed(1)+'%' : '—'}</div><div class="sub">benchmark</div></div>
+        <div class="stat"><div class="lbl">Diversification Ratio</div><div class="val">${divRatio}x</div><div class="sub">avg vol / port vol</div></div>
+    `;
+}
+
+function updateRealInsight(k, N) {
+    const el = document.getElementById('insight-real');
+    const portVol = realCurve.y[k - 1];
+    const avgVol = realCurve.avgStockVol;
+    const reduction = ((avgVol - portVol) / avgVol * 100).toFixed(0);
+
+    if (k <= 2) {
+        el.innerHTML = `<b>1&ndash;2 stocks:</b> Your portfolio carries nearly all the idiosyncratic risk of individual companies. A single stock portfolio has the full volatility of that stock (${portVol.toFixed(1)}%).`;
+    } else if (k <= 8) {
+        el.innerHTML = `<b>${k} stocks:</b> Already ${reduction}% of average single-stock volatility has been diversified away. Each additional stock still provides meaningful risk reduction.`;
+    } else if (k <= 20) {
+        el.innerHTML = `<b>${k} stocks:</b> Near the sweet spot. About ${reduction}% of average individual volatility has been eliminated. The curve is flattening &mdash; diminishing marginal benefit from each new stock.`;
+    } else {
+        const spyNote = realCurve.spyVol ? ` The S&amp;P 500's volatility (${realCurve.spyVol.toFixed(1)}%) shows what full market diversification looks like.` : '';
+        el.innerHTML = `<b>${k} stocks:</b> Well-diversified portfolio. ${reduction}% of average stock volatility eliminated. The remaining risk is <b>systematic</b> &mdash; driven by the overall market.${spyNote}`;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════
+   INIT — draw empty sim chart
+   ═══════════════════════════════════════════════ */
+(function init() {
+    Plotly.newPlot('chart-sim', [], {
+        title: { text: 'Portfolio Volatility vs Number of Assets', font: { size: 15, color: '#ccc' } },
+        xaxis: { title: 'Number of Assets', gridcolor: '#eee', range: [0, 45] },
+        yaxis: { title: 'Annualized Volatility (%)', gridcolor: '#eee', range: [0, 50] },
+        margin: { l: 56, r: 24, t: 48, b: 52 },
+        plot_bgcolor: '#fafafa', paper_bgcolor: 'white',
+        annotations: [{ x: 0.5, y: 0.5, xref: 'paper', yref: 'paper',
+            text: 'Press "Run Simulation" to start', showarrow: false,
+            font: { size: 16, color: '#bbb' } }],
+    }, plotCfg);
+})();
+</script>
+</body>
+</html>
