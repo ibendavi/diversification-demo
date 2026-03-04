@@ -88,6 +88,16 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f4f5f
   .container{padding:10px}
 }
 
+/* ── Portfolio tab controls ── */
+.port-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+.input-row{display:flex;align-items:center;gap:8px}
+.input-row label{font-size:.82rem;color:#555;min-width:130px}
+.port-input{flex:1;padding:7px 10px;font-size:.92rem;border:2px solid #ddd;border-radius:8px;outline:none;text-align:right;max-width:140px}
+.port-input:focus{border-color:#bb0000}
+.port-select{flex:1;padding:7px 10px;font-size:.92rem;border:2px solid #ddd;border-radius:8px;outline:none;background:#fff;max-width:200px}
+.port-select:focus{border-color:#bb0000}
+.port-charts{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:14px}
+
 /* ── Hidden panel ── */
 .panel{display:none}.panel.active{display:block}
 </style>
@@ -105,6 +115,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f4f5f
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('sim')">Simulation</button>
   <button class="tab-btn" onclick="switchTab('real')">Real Data</button>
+  <button class="tab-btn" onclick="switchTab('port')">My Portfolio</button>
 </div>
 
 <div id="error-box"></div>
@@ -208,6 +219,97 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f4f5f
 
 </div><!-- /panel-real -->
 
+
+<!-- ════════════════════════════════════════════ -->
+<!-- MY PORTFOLIO PANEL                          -->
+<!-- ════════════════════════════════════════════ -->
+<div id="panel-port" class="panel">
+
+<div class="card">
+  <h3>Your Financial Profile</h3>
+  <div class="port-controls">
+    <div class="input-row">
+      <label>Age</label>
+      <input type="range" id="port-age" min="25" max="65" value="28" step="1" style="flex:1;accent-color:#bb0000" oninput="document.getElementById('lbl-port-age').textContent=this.value">
+      <span class="slider-val" id="lbl-port-age">28</span>
+    </div>
+    <div class="input-row">
+      <label>Annual Salary</label>
+      <input type="text" class="port-input" id="port-salary" value="$120,000">
+    </div>
+    <div class="input-row">
+      <label>Job Sector</label>
+      <select class="port-select" id="port-job-sector">
+        <option value="Technology" selected>Technology</option>
+        <option value="Healthcare">Healthcare</option>
+        <option value="Financials">Financials</option>
+        <option value="Consumer Staples">Consumer Staples</option>
+        <option value="Energy">Energy</option>
+        <option value="Industrials">Industrials</option>
+        <option value="Utilities">Utilities</option>
+        <option value="Real Estate">Real Estate</option>
+        <option value="Materials">Materials</option>
+        <option value="Communication">Communication</option>
+        <option value="Consumer Disc.">Consumer Disc.</option>
+      </select>
+    </div>
+    <div class="input-row">
+      <label>Home Value</label>
+      <input type="text" class="port-input" id="port-home" value="$0" title="$0 = renter">
+    </div>
+    <div class="input-row">
+      <label>Mortgage Balance</label>
+      <input type="text" class="port-input" id="port-mortgage" value="$0">
+    </div>
+    <div class="input-row">
+      <label>Stock Portfolio</label>
+      <input type="text" class="port-input" id="port-stocks" value="$50,000">
+    </div>
+    <div class="input-row">
+      <label>Stock Sector</label>
+      <select class="port-select" id="port-stock-sector">
+        <option value="same" selected>Same as Job</option>
+        <option value="Diversified">Diversified / S&amp;P 500</option>
+        <option value="Technology">Technology</option>
+        <option value="Healthcare">Healthcare</option>
+        <option value="Financials">Financials</option>
+        <option value="Consumer Staples">Consumer Staples</option>
+        <option value="Energy">Energy</option>
+        <option value="Industrials">Industrials</option>
+        <option value="Utilities">Utilities</option>
+        <option value="Real Estate">Real Estate</option>
+        <option value="Materials">Materials</option>
+        <option value="Communication">Communication</option>
+        <option value="Consumer Disc.">Consumer Disc.</option>
+      </select>
+    </div>
+    <div class="input-row">
+      <label>Cash / Bonds</label>
+      <input type="text" class="port-input" id="port-cash" value="$10,000">
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="runPortfolio()">Analyze</button>
+    <button class="btn btn-secondary" onclick="resetPortfolio()">Reset Defaults</button>
+  </div>
+</div>
+
+<div class="port-charts">
+  <div id="chart-port-wealth" style="width:100%;height:200px"></div>
+  <div id="chart-port-sector" style="width:100%;height:200px"></div>
+</div>
+<div class="stats-row" id="stats-port">
+  <div class="stat"><div class="lbl">Total Wealth</div><div class="val">&mdash;</div></div>
+  <div class="stat"><div class="lbl">Human Capital %</div><div class="val">&mdash;</div></div>
+  <div class="stat"><div class="lbl">Eff. Beta</div><div class="val">&mdash;</div></div>
+  <div class="stat"><div class="lbl">Top Sector %</div><div class="val">&mdash;</div></div>
+</div>
+<div class="insight-box" id="insight-port">
+  Enter your financial profile and press <b>Analyze</b> to see your true diversification picture &mdash; including human capital, real estate, and financial assets.
+</div>
+
+</div><!-- /panel-port -->
+
 </div><!-- /container -->
 
 
@@ -220,12 +322,14 @@ let simAnimId = null;   // animation timer
 let realAnimId = null;
 
 /* ── Tab switching ── */
+const TAB_NAMES = ['sim','real','port'];
 function switchTab(which) {
     document.querySelectorAll('.tab-btn').forEach((b,i) => {
-        b.classList.toggle('active', (i===0 && which==='sim') || (i===1 && which==='real'));
+        b.classList.toggle('active', TAB_NAMES[i] === which);
     });
-    document.getElementById('panel-sim').classList.toggle('active', which==='sim');
-    document.getElementById('panel-real').classList.toggle('active', which==='real');
+    TAB_NAMES.forEach(t => {
+        document.getElementById('panel-' + t).classList.toggle('active', t === which);
+    });
 }
 
 /* ── Error display ── */
@@ -842,6 +946,231 @@ function updateRealInsight(k, N) {
         const spyNote = realCurve.spyVol ? ` The S&amp;P 500's volatility (${realCurve.spyVol.toFixed(1)}%) shows what full market diversification looks like.` : '';
         el.innerHTML = `<b>${k} stocks:</b> Well-diversified portfolio. ${reduction}% of average stock volatility eliminated. The remaining risk is <b>systematic</b> &mdash; driven by the overall market.${spyNote}`;
     }
+}
+
+
+/* ═══════════════════════════════════════════════
+   MY PORTFOLIO MODE
+   ═══════════════════════════════════════════════ */
+const SECTOR_BETAS = {
+    'Technology': 1.3, 'Healthcare': 0.8, 'Financials': 1.2,
+    'Consumer Staples': 0.6, 'Energy': 1.1, 'Industrials': 1.0,
+    'Utilities': 0.5, 'Real Estate': 0.8, 'Materials': 1.0,
+    'Communication': 1.0, 'Consumer Disc.': 1.1, 'Cash': 0.0,
+    'Diversified': 1.0,
+};
+
+const SECTOR_COLORS = {
+    'Technology': '#4472C4', 'Healthcare': '#ED7D31', 'Financials': '#A5A5A5',
+    'Consumer Staples': '#FFC000', 'Energy': '#5B9BD5', 'Industrials': '#70AD47',
+    'Utilities': '#9E480E', 'Real Estate': '#997300', 'Materials': '#636363',
+    'Communication': '#255E91', 'Consumer Disc.': '#BF4F51', 'Cash': '#92D050',
+    'Diversified': '#7030A0',
+};
+
+function parseCurrency(el) {
+    return Math.max(0, parseInt(String(el.value).replace(/[^0-9.-]/g, '')) || 0);
+}
+
+function formatCurrency(v) {
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+    return '$' + v.toLocaleString();
+}
+
+/* Auto-format currency inputs on blur */
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.port-input').forEach(inp => {
+        inp.addEventListener('blur', () => {
+            const v = parseCurrency(inp);
+            inp.value = '$' + v.toLocaleString();
+        });
+    });
+});
+
+function computePortfolio() {
+    const age = parseInt(document.getElementById('port-age').value);
+    const salary = parseCurrency(document.getElementById('port-salary'));
+    const jobSector = document.getElementById('port-job-sector').value;
+    const homeVal = parseCurrency(document.getElementById('port-home'));
+    const mortgage = parseCurrency(document.getElementById('port-mortgage'));
+    const stockVal = parseCurrency(document.getElementById('port-stocks'));
+    const stockSectorRaw = document.getElementById('port-stock-sector').value;
+    const stockSector = stockSectorRaw === 'same' ? jobSector : stockSectorRaw;
+    const cash = parseCurrency(document.getElementById('port-cash'));
+
+    // Human capital: PV of salary annuity, n = 65 - age, r = 2%
+    const n = Math.max(0, 65 - age);
+    const r = 0.02;
+    const hc = n > 0 ? salary * (1 - Math.pow(1 + r, -n)) / r : 0;
+
+    // Home equity
+    const homeEquity = Math.max(0, homeVal - mortgage);
+
+    // Total wealth
+    const total = hc + homeEquity + stockVal + cash;
+
+    // Sector exposure map
+    const sectors = {};
+    function addSector(name, amount) {
+        if (amount <= 0) return;
+        sectors[name] = (sectors[name] || 0) + amount;
+    }
+    addSector(jobSector, hc);
+    if (homeEquity > 0) addSector('Real Estate', homeEquity);
+    if (stockSector === 'Diversified') {
+        // Spread across all sectors equally
+        const sectorNames = Object.keys(SECTOR_BETAS).filter(s => s !== 'Cash' && s !== 'Diversified');
+        const each = stockVal / sectorNames.length;
+        sectorNames.forEach(s => addSector(s, each));
+    } else {
+        addSector(stockSector, stockVal);
+    }
+    addSector('Cash', cash);
+
+    // Effective beta: wealth-weighted
+    let effBeta = 0;
+    if (total > 0) {
+        for (const [sec, amt] of Object.entries(sectors)) {
+            effBeta += (amt / total) * (SECTOR_BETAS[sec] || 1.0);
+        }
+    }
+
+    // Top sector concentration
+    let topSector = '', topPct = 0;
+    for (const [sec, amt] of Object.entries(sectors)) {
+        const pct = total > 0 ? amt / total : 0;
+        if (pct > topPct) { topPct = pct; topSector = sec; }
+    }
+
+    return {
+        age, salary, jobSector, homeVal, mortgage, homeEquity,
+        stockVal, stockSector, cash, hc, total,
+        sectors, effBeta, topSector, topPct,
+        hcPct: total > 0 ? hc / total : 0,
+    };
+}
+
+function runPortfolio() {
+    const p = computePortfolio();
+    if (p.total <= 0) { showError('Total wealth is zero. Please enter some values.'); return; }
+
+    // ── Wealth breakdown bar ──
+    const wealthItems = [];
+    if (p.hc > 0) wealthItems.push({ name: 'Human Capital (' + p.jobSector + ')', val: p.hc, color: SECTOR_COLORS[p.jobSector] || '#888' });
+    if (p.homeEquity > 0) wealthItems.push({ name: 'Home Equity', val: p.homeEquity, color: SECTOR_COLORS['Real Estate'] });
+    if (p.stockVal > 0) wealthItems.push({ name: 'Stocks (' + p.stockSector + ')', val: p.stockVal, color: p.stockSector === 'Diversified' ? SECTOR_COLORS['Diversified'] : (SECTOR_COLORS[p.stockSector] || '#888') });
+    if (p.cash > 0) wealthItems.push({ name: 'Cash / Bonds', val: p.cash, color: SECTOR_COLORS['Cash'] });
+
+    const wealthTraces = wealthItems.map(item => ({
+        x: [item.val], y: ['Wealth'], type: 'bar', orientation: 'h',
+        name: item.name,
+        marker: { color: item.color },
+        text: [formatCurrency(item.val)], textposition: 'inside',
+        textfont: { color: '#fff', size: 13, family: 'Segoe UI' },
+        hovertemplate: item.name + ': ' + formatCurrency(item.val) + ' (' + (item.val / p.total * 100).toFixed(1) + '%)<extra></extra>',
+    }));
+
+    Plotly.newPlot('chart-port-wealth', wealthTraces, {
+        title: { text: 'Wealth Breakdown (' + formatCurrency(p.total) + ' total)', font: { size: 14, color: '#333' } },
+        barmode: 'stack', xaxis: { visible: false }, yaxis: { visible: false },
+        showlegend: true, legend: { orientation: 'h', y: -0.15, x: 0.5, xanchor: 'center', font: { size: 11 } },
+        margin: { l: 10, r: 10, t: 36, b: 50 },
+        plot_bgcolor: '#fafafa', paper_bgcolor: 'white', height: 200,
+    }, plotCfg);
+
+    // ── Sector exposure bar ──
+    const sortedSectors = Object.entries(p.sectors).sort((a, b) => b[1] - a[1]);
+    const sectorTraces = sortedSectors.map(([sec, amt]) => {
+        const pct = (amt / p.total * 100);
+        return {
+            x: [amt], y: ['Exposure'], type: 'bar', orientation: 'h',
+            name: sec,
+            marker: { color: SECTOR_COLORS[sec] || '#888' },
+            text: [sec + ' ' + pct.toFixed(0) + '%'], textposition: 'inside',
+            textfont: { color: '#fff', size: 12, family: 'Segoe UI' },
+            hovertemplate: sec + ': ' + formatCurrency(amt) + ' (' + pct.toFixed(1) + '%, beta=' + (SECTOR_BETAS[sec] || 1).toFixed(1) + ')<extra></extra>',
+        };
+    });
+
+    Plotly.newPlot('chart-port-sector', sectorTraces, {
+        title: { text: 'Effective Sector Exposure', font: { size: 14, color: '#333' } },
+        barmode: 'stack', xaxis: { visible: false }, yaxis: { visible: false },
+        showlegend: true, legend: { orientation: 'h', y: -0.15, x: 0.5, xanchor: 'center', font: { size: 11 } },
+        margin: { l: 10, r: 10, t: 36, b: 50 },
+        plot_bgcolor: '#fafafa', paper_bgcolor: 'white', height: 200,
+    }, plotCfg);
+
+    updatePortStats(p);
+    updatePortInsight(p);
+}
+
+function updatePortStats(p) {
+    document.getElementById('stats-port').innerHTML = `
+        <div class="stat"><div class="lbl">Total Wealth</div><div class="val">${formatCurrency(p.total)}</div><div class="sub">all assets</div></div>
+        <div class="stat"><div class="lbl">Human Capital %</div><div class="val">${(p.hcPct * 100).toFixed(0)}%</div><div class="sub">${formatCurrency(p.hc)}</div></div>
+        <div class="stat"><div class="lbl">Eff. Beta</div><div class="val">${p.effBeta.toFixed(2)}</div><div class="sub">wealth-weighted</div></div>
+        <div class="stat"><div class="lbl">Top Sector %</div><div class="val">${(p.topPct * 100).toFixed(0)}%</div><div class="sub">${p.topSector}</div></div>
+    `;
+}
+
+function updatePortInsight(p) {
+    const el = document.getElementById('insight-port');
+    const lines = [];
+
+    // Age-based HC insight
+    if (p.hcPct > 0.6) {
+        lines.push(`At <b>${p.age}</b>, your human capital dominates your total wealth (<b>${(p.hcPct * 100).toFixed(0)}%</b>). Your future salary of ${formatCurrency(p.salary)}/year is worth roughly <b>${formatCurrency(p.hc)}</b> in present value. This means your career is by far your biggest &ldquo;asset.&rdquo;`);
+    } else if (p.hcPct > 0.3) {
+        lines.push(`Human capital still represents <b>${(p.hcPct * 100).toFixed(0)}%</b> of your total wealth. With ${65 - p.age} years until retirement, your future earnings (${formatCurrency(p.hc)}) remain a significant asset.`);
+    } else {
+        lines.push(`With only <b>${65 - p.age} years</b> until retirement, your human capital (${(p.hcPct * 100).toFixed(0)}%) is a smaller share of total wealth. Financial assets matter more for your risk profile now.`);
+    }
+
+    // Double concentration warning
+    if (p.stockSector === p.jobSector && p.stockVal > 0) {
+        lines.push(`&#9888; <b>Double concentration risk:</b> Both your salary AND your stock portfolio are tied to <b>${p.jobSector}</b>. If this sector goes through a downturn, you could lose your job and your savings simultaneously.`);
+    }
+
+    // Top sector concentration
+    if (p.topPct > 0.7) {
+        lines.push(`<b>${(p.topPct * 100).toFixed(0)}%</b> of your total wealth is exposed to <b>${p.topSector}</b>. That's extremely concentrated &mdash; consider diversifying your stock portfolio into other sectors.`);
+    } else if (p.topPct > 0.5) {
+        lines.push(`About <b>${(p.topPct * 100).toFixed(0)}%</b> of your wealth is exposed to <b>${p.topSector}</b>. You have some concentration risk.`);
+    }
+
+    // Mortgage leverage
+    if (p.mortgage > 0 && p.homeVal > 0) {
+        const ltv = (p.mortgage / p.homeVal * 100).toFixed(0);
+        lines.push(`Your mortgage leverage (${ltv}% LTV) amplifies your exposure to real estate. Home equity is only ${formatCurrency(p.homeEquity)} of the ${formatCurrency(p.homeVal)} home value.`);
+    }
+
+    // Good diversification praise
+    if (p.stockSector !== p.jobSector && p.stockSector !== 'same' && p.stockVal > 0 && p.topPct < 0.6) {
+        lines.push(`&#10003; Good move: your stock portfolio (<b>${p.stockSector}</b>) is in a different sector from your job (<b>${p.jobSector}</b>), reducing concentration risk.`);
+    }
+
+    el.innerHTML = lines.join('<br><br>');
+}
+
+function resetPortfolio() {
+    document.getElementById('port-age').value = 28;
+    document.getElementById('lbl-port-age').textContent = '28';
+    document.getElementById('port-salary').value = '$120,000';
+    document.getElementById('port-job-sector').value = 'Technology';
+    document.getElementById('port-home').value = '$0';
+    document.getElementById('port-mortgage').value = '$0';
+    document.getElementById('port-stocks').value = '$50,000';
+    document.getElementById('port-stock-sector').value = 'same';
+    document.getElementById('port-cash').value = '$10,000';
+    Plotly.purge('chart-port-wealth');
+    Plotly.purge('chart-port-sector');
+    document.getElementById('stats-port').innerHTML = `
+        <div class="stat"><div class="lbl">Total Wealth</div><div class="val">&mdash;</div></div>
+        <div class="stat"><div class="lbl">Human Capital %</div><div class="val">&mdash;</div></div>
+        <div class="stat"><div class="lbl">Eff. Beta</div><div class="val">&mdash;</div></div>
+        <div class="stat"><div class="lbl">Top Sector %</div><div class="val">&mdash;</div></div>`;
+    document.getElementById('insight-port').innerHTML = 'Enter your financial profile and press <b>Analyze</b> to see your true diversification picture &mdash; including human capital, real estate, and financial assets.';
 }
 
 
